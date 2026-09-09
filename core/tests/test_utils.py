@@ -1,3 +1,17 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    h = _P(__file__).resolve().parent
+    _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+    _spec = _ilu.spec_from_file_location(n, _cand)
+    _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_m); return _m
+
 from uuid import uuid4
 
 import pytest
@@ -45,6 +59,10 @@ def test_parse_chunk_response_nofunc_calling():
     rolling_msg = AIMessageChunk(content="")
     chunk = AIMessageChunk(content="next ")
     for i in range(10):
+        # LINEAJE: enforce() `rolling_msg` at agent->tool post_tool — scan flagged AI_DAT_SEC_029 (Enforce decision logging, audit trail, and forensic readiness for AI-driven actions.). Mask/block; do not remove without review. site_id='site:sha256:3b8c013bea6fe30da9a83fb586f6cd3af0a17b2dcfc9eef0c5ea43b9fbe37e8c'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3b8c013bea6fe30da9a83fb586f6cd3af0a17b2dcfc9eef0c5ea43b9fbe37e8c', phase='post_tool', boundary={'source': 'tool_result', 'sink': 'agent_message'}, candidate_policies=[], fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='tool')
+        rolling_msg = _gr_client.enforce(_gr_site, rolling_msg, content_type='application/json', variable_name='rolling_msg', source_file=__file__, before_line=48)
         rolling_msg, parsed_chunk, _ = parse_chunk_response(rolling_msg, chunk, False)
         assert rolling_msg.content == "next " * (i + 1)
         assert parsed_chunk == "next "
